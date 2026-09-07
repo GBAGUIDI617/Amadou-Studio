@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Amadou Studio — de l'idée à la vidéo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+<style>
+  :root{
+    --ink:#141412;
+    --paper:#F2EEE6;
+    --amber:#E8A33D;
+    --teal:#2F6E64;
+    --line: rgba(242,238,230,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Work Sans', sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:56px 24px 80px;}
+
+  header{margin-bottom:40px;}
+  .eyebrow{
+    font-family:'Bebas Neue', sans-serif;
+    letter-spacing:.18em;
+    color:var(--amber);
+    font-size:14px;
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(38px,6vw,64px);
+    line-height:0.95;
+    margin:8px 0 12px;
+    letter-spacing:.01em;
+  }
+  p.lede{color:rgba(242,238,230,0.7); max-width:56ch; line-height:1.5;}
+
+  .panel{
+    background:rgba(242,238,230,0.04);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:24px;
+    margin-bottom:20px;
+  }
+  label{
+    display:block;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:rgba(242,238,230,0.55);
+    margin-bottom:8px;
+  }
+  textarea, input[type=password]{
+    width:100%;
+    background:rgba(0,0,0,0.25);
+    border:1px solid var(--line);
+    border-radius:6px;
+    color:var(--paper);
+    font-family:'Work Sans', sans-serif;
+    font-size:15px;
+    padding:12px 14px;
+    resize:vertical;
+  }
+  textarea:focus, input:focus{outline:2px solid var(--amber); outline-offset:1px;}
+  textarea{min-height:90px;}
+  .hint{font-size:12.5px; color:rgba(242,238,230,0.45); margin-top:6px;}
+  .hint a{color:var(--amber);}
+
+  .row{display:flex; gap:16px; flex-wrap:wrap; margin-top:8px;}
+  .row > div{flex:1; min-width:220px;}
+
+  button.primary{
+    margin-top:20px;
+    background:var(--amber);
+    color:var(--ink);
+    border:none;
+    font-family:'Bebas Neue', sans-serif;
+    font-size:18px;
+    letter-spacing:.06em;
+    padding:14px 28px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  button.primary:hover{filter:brightness(1.08);}
+  button.primary:disabled{opacity:.5; cursor:wait;}
+
+  #status{margin-top:14px; font-size:14px; color:var(--amber); min-height:1.2em;}
+  #status.error{color:#E2685A;}
+
+  .filmstrip{
+    display:flex; gap:2px; margin:44px 0 18px;
+  }
+  .filmstrip span{
+    flex:1; height:8px; background:repeating-linear-gradient(90deg, var(--ink) 0 8px, rgba(242,238,230,0.35) 8px 10px);
+  }
+
+  .storyboard{display:flex; flex-direction:column; gap:14px;}
+  .scene{
+    display:grid;
+    grid-template-columns:52px 140px 1fr;
+    gap:18px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:18px 20px;
+    background:rgba(242,238,230,0.03);
+    align-items:start;
+  }
+  .scene .num{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:28px;
+    color:var(--teal);
+    line-height:1;
+  }
+  .scene h3{margin:0 0 8px; font-size:15px; letter-spacing:.02em;}
+  .scene .field{margin-bottom:8px; font-size:14.5px; line-height:1.45;}
+  .scene .field b{
+    display:block;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:rgba(242,238,230,0.45);
+    margin-bottom:2px;
+    font-weight:600;
+  }
+  .thumb{
+    width:140px;
+    height:90px;
+    border-radius:6px;
+    background:rgba(242,238,230,0.06);
+    border:1px solid var(--line);
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    color:rgba(242,238,230,0.4);
+    text-align:center;
+  }
+  .thumb img, .thumb video{width:100%; height:100%; object-fit:cover; display:block;}
+  .thumb-retry{
+    display:block;
+    margin-top:6px;
+    background:none;
+    border:none;
+    color:var(--amber);
+    font-size:11.5px;
+    cursor:pointer;
+    text-decoration:underline;
+    padding:0;
+  }
+  .thumb-retry:disabled{opacity:.4; cursor:default;}
+
+  .next-steps{
+    margin-top:48px;
+    padding-top:24px;
+    border-top:1px solid var(--line);
+    font-size:14px;
+    color:rgba(242,238,230,0.55);
+  }
+  .logo{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .logo svg{display:block;}
+  .logo-word{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:20px;
+    letter-spacing:.06em;
+    color:var(--paper);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">
+      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="38" height="38" rx="9" fill="var(--amber)"/>
+        <path d="M16 12.5L28 20L16 27.5V12.5Z" fill="var(--ink)"/>
+      </svg>
+      <span class="logo-word">AMADOU <span style="color:var(--amber);">STUDIO</span></span>
+    </div>
+    <div class="eyebrow">De l'idée au fichier final</div>
+    <h1>De l'idée à la vidéo</h1>
+    <p class="lede">Écris ton idée : l'IA découpe le script en scènes, trouve une image pour chacune, puis assemble le tout en vraie vidéo avec sous-titres.</p>
+  </header>
+
+  <div class="panel" id="loginPanel">
+    <label>Connexion</label>
+    <p class="hint" style="margin-bottom:14px;">Connecte-toi avec ton compte Google pour générer des vidéos (limite de 5 vidéos par jour et par personne).</p>
+    <div id="g_id_onload"
+         data-client_id="834982273976-tqhkrjg8jj7eh0q1qgh6jv329d990n29.apps.googleusercontent.com"
+         data-callback="handleGoogleSignIn">
+    </div>
+    <div class="g_id_signin" data-type="standard" data-theme="filled_black" data-size="large"></div>
+    <div id="loginStatus" style="margin-top:12px; font-size:13px; color:rgba(242,238,230,0.6);"></div>
+  </div>
+
+  <div id="appContent" style="display:none;">
+  <div class="panel" id="userPanel">
+    <p class="hint" id="userGreeting"></p>
+  </div>
+
+  <div class="panel">
+    <label for="idea">Idée de vidéo</label>
+    <textarea id="idea" placeholder="Ex : une vidéo de 30 secondes pour expliquer pourquoi boire de l'eau le matin est bon pour la santé"></textarea>
+    <div class="row">
+      <div>
+        <label for="duration">Durée visée</label>
+        <input type="text" id="duration" placeholder="Ex : 30 secondes" value="30 secondes" />
+      </div>
+      <div>
+        <label for="tone">Ton</label>
+        <input type="text" id="tone" placeholder="Ex : dynamique, pédagogique" value="dynamique et clair" />
+      </div>
+    </div>
+    <button class="primary" id="genBtn" onclick="generateScript()">Générer le storyboard</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="filmstrip" id="filmTop" style="display:none;"><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="storyboard" id="storyboard"></div>
+
+  <div class="panel" id="assemblePanel" style="display:none;">
+    <label>Assembler la vidéo</label>
+    <p class="hint" style="margin-bottom:14px;">Crée une vidéo avec une vraie voix off générée par IA (à partir du texte de chaque scène), les clips vidéo choisis, et des sous-titres. Le traitement est assez long — patience.</p>
+    <div class="row" style="margin-bottom:14px;">
+      <div>
+        <label for="formatSelect">Format</label>
+        <select id="formatSelect" style="width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--line); border-radius:6px; color:var(--paper); font-family:'Work Sans', sans-serif; font-size:15px; padding:12px 14px;">
+          <option value="16:9">Paysage 16:9 (YouTube)</option>
+          <option value="9:16">Vertical 9:16 (Réels, TikTok, Shorts)</option>
+          <option value="1:1">Carré 1:1 (Instagram post)</option>
+        </select>
+      </div>
+      <div>
+        <label for="resolutionSelect">Résolution</label>
+        <select id="resolutionSelect" style="width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--line); border-radius:6px; color:var(--paper); font-family:'Work Sans', sans-serif; font-size:15px; padding:12px 14px;">
+          <option value="720">720p (plus rapide)</option>
+          <option value="1080">1080p (Full HD)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:14px;">
+      <div>
+        <label for="voiceSelect">Voix</label>
+        <select id="voiceSelect" style="width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--line); border-radius:6px; color:var(--paper); font-family:'Work Sans', sans-serif; font-size:15px; padding:12px 14px;">
+          <option value="Kore">Kore (féminine, posée)</option>
+          <option value="Puck">Puck (masculine, énergique)</option>
+          <option value="Zephyr">Zephyr (féminine, douce)</option>
+          <option value="Charon">Charon (masculine, grave)</option>
+          <option value="Fenrir">Fenrir (masculine, ferme)</option>
+          <option value="Leda">Leda (féminine, jeune)</option>
+          <option value="Orus">Orus (masculine, neutre)</option>
+          <option value="Aoede">Aoede (féminine, chaleureuse)</option>
+          <option value="Autonoe">Autonoe (féminine, claire)</option>
+          <option value="Enceladus">Enceladus (masculine, calme)</option>
+          <option value="Algieba">Algieba (masculine, douce)</option>
+          <option value="Achernar">Achernar (féminine, légère)</option>
+          <option value="Gacrux">Gacrux (féminine, mature)</option>
+          <option value="Sulafat">Sulafat (féminine, chaude)</option>
+        </select>
+      </div>
+      <div>
+        <label for="languageSelect">Langue de la voix</label>
+        <select id="languageSelect" style="width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--line); border-radius:6px; color:var(--paper); font-family:'Work Sans', sans-serif; font-size:15px; padding:12px 14px;">
+          <option value="">Détection automatique</option>
+          <option value="fr-FR">Français</option>
+          <option value="en-US">Anglais (US)</option>
+          <option value="en-GB">Anglais (UK)</option>
+          <option value="es-ES">Espagnol</option>
+          <option value="pt-BR">Portugais (Brésil)</option>
+          <option value="de-DE">Allemand</option>
+          <option value="it-IT">Italien</option>
+          <option value="ar-XA">Arabe</option>
+          <option value="ja-JP">Japonais</option>
+          <option value="ko-KR">Coréen</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="zh-CN">Chinois (mandarin)</option>
+          <option value="ru-RU">Russe</option>
+          <option value="tr-TR">Turc</option>
+        </select>
+      </div>
+    </div>
+    <button class="primary" id="assembleBtn" onclick="assembleVideo()">Assembler la vidéo</button>
+    <div id="assembleStatus"></div>
+    <div id="videoResult" style="margin-top:20px;"></div>
+  </div>
+
+  <div class="next-steps">
+    Vidéo avec voix off générée par IA, clips vidéo et sous-titres — le pipeline complet, de l'idée au fichier final.
+  </div>
+
+  </div>
+
+</div>
+
+<canvas id="hiddenCanvas" width="1280" height="720" style="display:none;"></canvas>
+<video id="hiddenVideo" muted playsinline style="display:none;"></video>
+
+<script>
+let googleIdToken = null;
+
+function handleGoogleSignIn(response){
+  googleIdToken = response.credential;
+  const payload = JSON.parse(atob(response.credential.split('.')[1]));
+  document.getElementById('loginPanel').style.display = "none";
+  document.getElementById('appContent').style.display = "block";
+  document.getElementById('userGreeting').textContent = "Connecté en tant que " + (payload.email || "");
+}
+
+async function generateScript(){
+  const idea = document.getElementById('idea').value.trim();
+  const duration = document.getElementById('duration').value.trim() || "30 secondes";
+  const tone = document.getElementById('tone').value.trim() || "neutre";
+  const status = document.getElementById('status');
+  const btn = document.getElementById('genBtn');
+  const board = document.getElementById('storyboard');
+  const filmTop = document.getElementById('filmTop');
+
+  status.className = "";
+  status.textContent = "";
+
+  if(!idea){
+    status.className = "error";
+    status.textContent = "Écris d'abord ton idée de vidéo.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Génération du script en cours…";
+  board.innerHTML = "";
+  filmTop.style.display = "none";
+  Object.keys(sceneVideoCache).forEach(k => delete sceneVideoCache[k]);
+
+  try{
+    const resp = await withTimeout(fetch(
+      "/.netlify/functions/generate-script",
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ idea, duration, tone, idToken: googleIdToken })
+      }
+    ), 45000, "appel au serveur");
+
+    const data = await resp.json();
+    if(!resp.ok){
+      throw new Error(data.error || ("Erreur serveur (" + resp.status + ")"));
+    }
+
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const cleaned = raw.replace(/```json|```/g, "").trim().replace(/,(\s*[\]}])/g, "$1");
+    const scenes = JSON.parse(cleaned);
+
+    if(!Array.isArray(scenes) || scenes.length === 0){
+      throw new Error("Réponse inattendue de l'IA, réessaie.");
+    }
+
+    filmTop.style.display = "flex";
+
+    scenes.forEach((s, i) => {
+      const div = document.createElement('div');
+      div.className = 'scene';
+      div.innerHTML = `
+        <div class="num">${String(i+1).padStart(2,'0')}</div>
+        <div>
+          <div class="thumb" id="thumb-${i}">Recherche…</div>
+          <button class="thumb-retry" id="retry-${i}" onclick="fetchSceneVideo('${escapeJs(s.mots_cles_image || "")}', ${i})" disabled>Autre vidéo</button>
+        </div>
+        <div>
+          <div class="field"><b>Visuel</b>${escapeHtml(s.visuel || "")}</div>
+          <div class="field"><b>Voix off</b>${escapeHtml(s.voix_off || "")}</div>
+          <div class="field"><b>Mots-clés vidéo</b>${escapeHtml(s.mots_cles_image || "")}</div>
+        </div>
+      `;
+      board.appendChild(div);
+
+      if(s.mots_cles_image){
+        fetchSceneVideo(s.mots_cles_image, i);
+      }
+    });
+
+    status.className = "";
+    status.textContent = scenes.length + " scènes générées.";
+    currentScenes = scenes;
+    document.getElementById('assemblePanel').style.display = "block";
+    document.getElementById('videoResult').innerHTML = "";
+  } catch(err){
+    status.className = "error";
+    status.textContent = "Échec : " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+const sceneVideoCache = {};
+
+function bestVideoUrl(hit){
+  const v = hit.videos || {};
+  return (v.small && v.small.url) || (v.tiny && v.tiny.url) || (v.medium && v.medium.url) || null;
+}
+
+async function fetchSceneVideo(query, index){
+  const thumb = document.getElementById('thumb-' + index);
+  const retryBtn = document.getElementById('retry-' + index);
+
+  try{
+    if(!sceneVideoCache[index]){
+      const resp = await fetch("/.netlify/functions/search-videos", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ query, idToken: googleIdToken })
+      });
+      const data = await resp.json();
+      if(!resp.ok){
+        throw new Error(data.error || ("HTTP " + resp.status));
+      }
+      sceneVideoCache[index] = { hits: data.hits || [], pos: -1, blobUrls: {} };
+    }
+
+    const cache = sceneVideoCache[index];
+    if(cache.hits.length === 0){
+      thumb.textContent = "Aucune vidéo trouvée";
+      return;
+    }
+
+    cache.pos = (cache.pos + 1) % cache.hits.length;
+    const hit = cache.hits[cache.pos];
+    const url = bestVideoUrl(hit);
+    if(!url){
+      thumb.textContent = "Vidéo indisponible";
+      return;
+    }
+
+    thumb.textContent = "Téléchargement…";
+
+    if(!cache.blobUrls[cache.pos]){
+      const clipResp = await fetch(url);
+      const clipBlob = await clipResp.blob();
+      cache.blobUrls[cache.pos] = URL.createObjectURL(clipBlob);
+    }
+
+    thumb.innerHTML = `<video src="${cache.blobUrls[cache.pos]}" autoplay loop muted playsinline></video>`;
+    if(retryBtn) retryBtn.disabled = false;
+  } catch(err){
+    thumb.textContent = "Vidéo indisponible";
+  }
+}
+
+function escapeJs(str){
+  return String(str).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+let currentScenes = [];
+let ffmpegInstance = null;
+const SITE_WATERMARK = "AMADOU STUDIO";
+
+function currentVideoUrlForScene(index){
+  const cache = sceneVideoCache[index];
+  if(!cache || cache.pos < 0 || !cache.hits[cache.pos]) return null;
+  return bestVideoUrl(cache.hits[cache.pos]);
+}
+
+function currentVideoBlobForScene(index){
+  const cache = sceneVideoCache[index];
+  if(!cache || cache.pos < 0) return null;
+  return cache.blobUrls[cache.pos] || null;
+}
+
+function wrapText(ctx, text, maxWidth){
+  const words = text.split(/\s+/);
+  const lines = [];
+  let line = "";
+  words.forEach(word => {
+    const test = line ? line + " " + word : word;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  });
+  if(line) lines.push(line);
+  return lines;
+}
+
+async function drawFrameFromSource(sourceEl, caption){
+  const canvas = document.getElementById('hiddenCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  ctx.fillStyle = "#141412";
+  ctx.fillRect(0, 0, W, H);
+
+  if(sourceEl){
+    const srcW = sourceEl.videoWidth || sourceEl.naturalWidth;
+    const srcH = sourceEl.videoHeight || sourceEl.naturalHeight;
+    const scale = Math.max(W / srcW, H / srcH);
+    const dw = srcW * scale, dh = srcH * scale;
+    ctx.drawImage(sourceEl, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = "#2F6E64";
+    ctx.font = "bold 32px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Pas de vidéo pour cette scène", W/2, H/2);
+  }
+
+  if(caption){
+    ctx.font = "600 34px 'Work Sans', sans-serif";
+    ctx.textAlign = "center";
+    const lines = wrapText(ctx, caption, W - 160);
+    const lineHeight = 46;
+    const barHeight = lines.length * lineHeight + 50;
+    ctx.fillStyle = "rgba(20,20,18,0.72)";
+    ctx.fillRect(0, H - barHeight, W, barHeight);
+    ctx.fillStyle = "#F2EEE6";
+    lines.forEach((line, i) => {
+      ctx.fillText(line, W/2, H - barHeight + 40 + i * lineHeight);
+    });
+  }
+
+  ctx.font = "600 20px 'Bebas Neue', sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillStyle = "rgba(242,238,230,0.45)";
+  ctx.fillText(SITE_WATERMARK, W - 24, 36);
+
+  return new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+}
+
+function seekVideo(video, time){
+  return withTimeout(new Promise(resolve => {
+    const onSeeked = () => { video.removeEventListener('seeked', onSeeked); resolve(); };
+    video.addEventListener('seeked', onSeeked);
+    video.currentTime = time;
+  }), 6000, "seek vidéo");
+}
+
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`Délai dépassé (${label})`)), ms))
+  ]);
+}
+
+function estimateDuration(text){
+  const words = (text || "").trim().split(/\s+/).filter(Boolean).length;
+  const seconds = words / 2.3;
+  return Math.min(7, Math.max(2.5, seconds + 0.8));
+}
+
+function base64ToUint8Array(base64){
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function pcmToWavBlob(pcmBytes, sampleRate){
+  const numChannels = 1, bitsPerSample = 16;
+  const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+  const blockAlign = numChannels * bitsPerSample / 8;
+  const dataSize = pcmBytes.length;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  function writeString(offset, str){ for(let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+  new Uint8Array(buffer, 44).set(pcmBytes);
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+const TTS_SAMPLE_RATE = 24000;
+
+function silentWavBlob(durationSeconds){
+  const numSamples = Math.max(1, Math.round(durationSeconds * TTS_SAMPLE_RATE));
+  const pcmBytes = new Uint8Array(numSamples * 2); // silence = zeros
+  return pcmToWavBlob(pcmBytes, TTS_SAMPLE_RATE);
+}
+
+async function generateVoiceoverWav(text, voiceName, languageCode){
+  const resp = await withTimeout(fetch(
+    "/.netlify/functions/generate-voice",
+    {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ text, voiceName, languageCode, idToken: googleIdToken })
+    }
+  ), 30000, "génération de la voix");
+
+  const data = await resp.json();
+  if(!resp.ok){
+    throw new Error(data.error || ("HTTP " + resp.status));
+  }
+  const part = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0];
+  const inline = part && part.inlineData;
+  if(!inline || !inline.data){
+    throw new Error("Pas de données audio reçues.");
+  }
+  const rateMatch = /rate=(\d+)/.exec(inline.mimeType || "");
+  const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : TTS_SAMPLE_RATE;
+  const pcmBytes = base64ToUint8Array(inline.data);
+  const blob = pcmToWavBlob(pcmBytes, sampleRate);
+  const duration = pcmBytes.length / (sampleRate * 2);
+  return { blob, duration };
+}
+
+function computeDimensions(format, shortSide){
+  const long = format === "16:9" ? Math.round(shortSide * 16 / 9) : (format === "9:16" ? Math.round(shortSide * 16 / 9) : shortSide);
+  if(format === "16:9") return { w: long, h: shortSide };
+  if(format === "9:16") return { w: shortSide, h: long };
+  return { w: shortSide, h: shortSide }; // 1:1
+}
+
+async function assembleVideo(){
+  const status = document.getElementById('assembleStatus');
+  const btn = document.getElementById('assembleBtn');
+  const resultBox = document.getElementById('videoResult');
+  const voiceName = document.getElementById('voiceSelect').value;
+  const languageCode = document.getElementById('languageSelect').value;
+  const format = document.getElementById('formatSelect').value;
+  const resolution = parseInt(document.getElementById('resolutionSelect').value, 10);
+  const dims = computeDimensions(format, resolution);
+  status.className = "";
+  resultBox.innerHTML = "";
+
+  if(currentScenes.length === 0){
+    status.className = "error";
+    status.textContent = "Génère d'abord un storyboard.";
+    return;
+  }
+
+  btn.disabled = true;
+
+  try{
+    if(!ffmpegInstance || !ffmpegInstance.isLoaded()){
+      status.textContent = "Chargement du moteur vidéo (une seule fois)…";
+      const { createFFmpeg, fetchFile } = FFmpeg;
+      ffmpegInstance = createFFmpeg({
+        log: true,
+        corePath: "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
+      });
+      window.fetchFileHelper = fetchFile;
+      await ffmpegInstance.load();
+    }
+    const ffmpeg = ffmpegInstance;
+    const fetchFile = window.fetchFileHelper;
+    const hiddenVideo = document.getElementById('hiddenVideo');
+    const hiddenCanvas = document.getElementById('hiddenCanvas');
+    hiddenCanvas.width = dims.w;
+    hiddenCanvas.height = dims.h;
+    const FPS_CAPTURE = 6;
+
+    // Étape 1 : générer la voix off de chaque scène (ou du silence si ça échoue / pas de clé)
+    const sceneDurations = [];
+    for(let i = 0; i < currentScenes.length; i++){
+      const caption = currentScenes[i].voix_off || "";
+      let audioBlob, duration;
+      if(caption){
+        try{
+          status.textContent = `Génération de la voix off — scène ${i+1}/${currentScenes.length}…`;
+          const result = await generateVoiceoverWav(caption, voiceName, languageCode);
+          audioBlob = result.blob;
+          duration = result.duration + 0.3;
+        } catch(voiceErr){
+          status.textContent = `Voix indisponible pour la scène ${i+1}, silence à la place…`;
+          duration = estimateDuration(caption);
+          audioBlob = silentWavBlob(duration);
+        }
+      } else {
+        duration = estimateDuration(caption);
+        audioBlob = silentWavBlob(duration);
+      }
+      ffmpeg.FS('writeFile', `a${i}.wav`, await fetchFile(audioBlob));
+      sceneDurations.push(duration);
+    }
+
+    // Étape 2 : extraire les images de chaque clip vidéo, sur la durée de la voix off
+    const framesMeta = [];
+    for(let i = 0; i < currentScenes.length; i++){
+      const scene = currentScenes[i];
+      const caption = scene.voix_off || "";
+      const sceneDuration = sceneDurations[i];
+      const videoUrl = currentVideoUrlForScene(i);
+
+      if(videoUrl){
+        try{
+          let clipObjectUrl = currentVideoBlobForScene(i);
+          if(!clipObjectUrl){
+            status.textContent = `Téléchargement du clip ${i+1}/${currentScenes.length}…`;
+            const clipResp = await withTimeout(fetch(videoUrl), 20000, "téléchargement du clip");
+            const clipBlob = await clipResp.blob();
+            clipObjectUrl = URL.createObjectURL(clipBlob);
+          }
+
+          await withTimeout(new Promise((resolve, reject) => {
+            hiddenVideo.onloadedmetadata = resolve;
+            hiddenVideo.onerror = reject;
+            hiddenVideo.src = clipObjectUrl;
+          }), 10000, "chargement du clip");
+
+          try{ await hiddenVideo.play(); hiddenVideo.pause(); } catch(e){}
+
+          const captureDuration = Math.min(sceneDuration, hiddenVideo.duration || sceneDuration);
+          const frameCount = Math.max(1, Math.round(captureDuration * FPS_CAPTURE));
+          const frameInterval = sceneDuration / frameCount;
+
+          for(let f = 0; f < frameCount; f++){
+            status.textContent = `Scène ${i+1}/${currentScenes.length} — image ${f+1}/${frameCount}…`;
+            const t = Math.min(f * (captureDuration / frameCount), Math.max(0, hiddenVideo.duration - 0.05));
+            await seekVideo(hiddenVideo, t);
+            const blob = await drawFrameFromSource(hiddenVideo, caption);
+            const filename = `f${i}_${f}.png`;
+            ffmpeg.FS('writeFile', filename, await fetchFile(blob));
+            framesMeta.push({ filename, duration: frameInterval });
+          }
+        } catch(clipErr){
+          status.textContent = `Scène ${i+1} : clip trop lent, image de secours…`;
+          const blob = await drawFrameFromSource(null, caption);
+          const filename = `f${i}_fallback.png`;
+          ffmpeg.FS('writeFile', filename, await fetchFile(blob));
+          framesMeta.push({ filename, duration: sceneDuration });
+        }
+      } else {
+        const blob = await drawFrameFromSource(null, caption);
+        const filename = `f${i}_0.png`;
+        ffmpeg.FS('writeFile', filename, await fetchFile(blob));
+        framesMeta.push({ filename, duration: sceneDuration });
+      }
+    }
+
+    let concatList = "";
+    framesMeta.forEach(fr => {
+      concatList += `file '${fr.filename}'\nduration ${fr.duration.toFixed(3)}\n`;
+    });
+    concatList += `file '${framesMeta[framesMeta.length - 1].filename}'\n`;
+    ffmpeg.FS('writeFile', 'list.txt', concatList);
+
+    status.textContent = "Assemblage des images en vidéo…";
+    await ffmpeg.run(
+      '-f', 'concat', '-safe', '0', '-i', 'list.txt',
+      '-vsync', 'vfr', '-pix_fmt', 'yuv420p',
+      '-vf', `scale=${dims.w}:${dims.h}`,
+      'video_noaudio.mp4'
+    );
+
+    status.textContent = "Assemblage de la voix off…";
+    const audioInputs = [];
+    currentScenes.forEach((s, i) => audioInputs.push('-i', `a${i}.wav`));
+    const filterInputs = currentScenes.map((s, i) => `[${i}:a]`).join('');
+    await ffmpeg.run(
+      ...audioInputs,
+      '-filter_complex', `${filterInputs}concat=n=${currentScenes.length}:v=0:a=1[aout]`,
+      '-map', '[aout]',
+      'audio_all.wav'
+    );
+
+    status.textContent = "Fusion audio + vidéo…";
+    await ffmpeg.run(
+      '-i', 'video_noaudio.mp4', '-i', 'audio_all.wav',
+      '-c:v', 'copy', '-c:a', 'aac', '-shortest',
+      'output.mp4'
+    );
+
+    const data = ffmpeg.FS('readFile', 'output.mp4');
+    const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+    const url = URL.createObjectURL(videoBlob);
+
+    resultBox.innerHTML = `
+      <video src="${url}" controls style="width:100%; border-radius:8px; margin-bottom:12px;"></video>
+      <a href="${url}" download="ma-video.mp4" class="thumb-retry" style="font-size:14px;">Télécharger la vidéo (.mp4)</a>
+    `;
+    status.className = "";
+    status.textContent = "Vidéo prête, avec voix off.";
+  } catch(err){
+    status.className = "error";
+    status.textContent = "Échec de l'assemblage : " + err.message;
+    ffmpegInstance = null;
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
